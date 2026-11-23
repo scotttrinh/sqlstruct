@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v6.8.0
+        with:
+          enable-cache: false
+
+      - name: Verify tag matches package version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          uv run python - <<'EOF'
+          import os, sys, tomllib
+          tag_version = os.environ["TAG_NAME"].removeprefix("v")
+          with open("pyproject.toml", "rb") as f:
+              pkg_version = tomllib.load(f)["project"]["version"]
+          if tag_version != pkg_version:
+              print(
+                  f"Tag version {tag_version!r} does not match pyproject.toml version {pkg_version!r}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          EOF
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check src tests
+
+      - name: Type check
+        run: uv run ty check
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Build package
+        run: uv build
+
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sqlstruct
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4.3.0
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@v1.14.3
+        with:
+          packages-dir: dist/
+
+  create-release:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4.3.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --title "$TAG_NAME" \
+            --notes ""

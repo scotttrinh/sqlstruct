@@ -1,0 +1,35 @@
+[project]
+name = "sqlstruct"
+version = "0.1.0a1"
+description = "SQLModel for msgspec"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "msgspec>=0.22.0",
+    "sqlalchemy>=2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.17.5",
+    "ty>=0.0.104",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.uv]
+exclude-newer = "2 days"
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }]
