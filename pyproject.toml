@@ -1,6 +1,6 @@
 [project]
 name = "sqlstruct"
-version = "0.1.0a1"
+version = "0.1.0"
 description = "SQLModel for msgspec"
 readme = "README.md"
 requires-python = ">=3.12"
